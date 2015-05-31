@@ -1,0 +1,20 @@
+﻿<Window x:Class="GUIFish.MakeTPSForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Build TPS Files" Height="300" Width="570">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="551*"/>
+            <ColumnDefinition Width="12*"/>
+        </Grid.ColumnDefinitions>
+        <Label x:Name="FolderLabel" Content="Current Folder:" HorizontalAlignment="Left" VerticalAlignment="Top" RenderTransformOrigin="1.427,1.373" Margin="10,10,0,0" Height="26" Width="89"/>
+        <Label x:Name="FolderNameLabel" Content="" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,10,0,0" Width="457" Height="26"/>
+        <Button x:Name="SelectFolderButton" Content="Select Folder" HorizontalAlignment="Left" VerticalAlignment="Top" Width="75" Margin="10,36,0,0" Click="SelectFolderButton_Click"/>
+        <Button x:Name="GoButton" Content="Go" HorizontalAlignment="Left" Margin="10,79,0,0" VerticalAlignment="Top" Width="75" Click="GoButton_Click"/>
+        <Button x:Name="CloseButton" Content="Close" HorizontalAlignment="Left" Margin="10,236,0,0" VerticalAlignment="Top" Width="75" Click="CloseButton_Click"/>
+        <Button x:Name="HelpButton" Content="Help" HorizontalAlignment="Left" Margin="10,211,0,0" VerticalAlignment="Top" Width="75" Click="HelpButton_Click"/>
+        <TextBox x:Name="OutputTextBox" HorizontalAlignment="Left" Height="177" Margin="94,79,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="447"/>
+        <Label x:Name="OutputLabel" Content="Output:" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="94,53,0,0" Width="72"/>
+
+    </Grid>
+</Window>

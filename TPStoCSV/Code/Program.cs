@@ -16,6 +16,9 @@ namespace FishTPStoCSV1 {
 
         static void Main(string[] args) {
 
+            Console.WriteLine("TPS to CSV Automated TOOL v 1.1.0");
+            Console.WriteLine("	Ryan Huard\n");
+
             int n = getNumPoints();
 
             string outfile = getOutFileName();
