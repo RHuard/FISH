@@ -13,6 +13,9 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Xceed.Wpf.Toolkit;
 using System.IO;
+using System.Threading;
+using System.Windows.Threading;
+using System.ComponentModel;
 
 namespace GUIFish {
     /// <summary>
@@ -30,6 +33,7 @@ namespace GUIFish {
 
             _data = new List<FishData>();
             _dialog = new System.Windows.Forms.FolderBrowserDialog();
+            _result = new System.Windows.Forms.DialogResult();
             OutputTextBox.TextWrapping = TextWrapping.Wrap;
             OutputTextBox.AcceptsReturn = true;
             OutputTextBox.VerticalScrollBarVisibility = ScrollBarVisibility.Visible;
@@ -46,72 +50,97 @@ namespace GUIFish {
         }
 
         private void GoButton_Click(object sender, RoutedEventArgs e) {
-            OutputTextBox.Text = "";
+            //disable buttons
+            CloseButton.IsEnabled = false;
+            GoButton.IsEnabled = false;
+            HelpButton.IsEnabled = false;
+            SelectFolderButton.IsEnabled = false;
+            PointsUpDown.IsEnabled = false;
+            STDDevUpDown.IsEnabled = false;
 
+            OutputTextBox.Text = "";
+            bool go = true;
             if(System.Windows.Forms.DialogResult.OK != _result) {
 
-                OutputTextBox.Text = "You must select a folder first";
-                return;
+                OutputTextBox.Text = "You must select a folder first\n";
+                Done();
+                go = false;
             }
 
             if(0 > Convert.ToInt32(PointsUpDown.Text)) {
 
-                OutputTextBox.Text = "Number of Points cannot be less than 0";
-                return;
+                OutputTextBox.Text = "Number of Points cannot be less than 0\n";
+                Done();
+                go = false;
             }
 
             if(0 > Convert.ToInt32(STDDevUpDown.Text)) {
 
-                OutputTextBox.Text = "Number of Standard Devations cannot be less than 0";
-                return;
+                OutputTextBox.Text = "Number of Standard Devations cannot be less than 0\n";
+                Done();
+                go = false;
             }
 
             if(String.Empty == OutFileTextBox.Text) {
 
-                OutputTextBox.Text = "You must have an outfile name";
-                return;
+                OutputTextBox.Text = "You must have an outfile name\n";
+                Done();
+                go = false;
             }
+
+            if(go == true) {
+
+                _writer = new CSVWriter(_dialog.SelectedPath.ToString() + "\\" + OutFileTextBox.Text + ".csv");
+                int n = Convert.ToInt32(STDDevUpDown.Text);
+                int np = Convert.ToInt32(PointsUpDown.Text);
+                ThreadStart ts = delegate { Go(n, np); };
+                Thread t = new Thread(ts);
+                t.Start();
+
+                OutputTextBox.Text = "Working\n";
+            }
+
+        }
+
+        public void Go(int n, int np) {
 
             //if we are here, we are able to start adding the tps files to the csv file
             string[] files = Directory.GetFiles(_dialog.SelectedPath, "*.TPS");
 
-            int n = Convert.ToInt32(STDDevUpDown.Text);
-            int np = Convert.ToInt32(PointsUpDown.Text);
-            
-            OutputTextBox.Text += "Grabbing Data From Files Now" + "\n";
-            OutputTextBox.Text += "-----------------------------" + "\n";
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("Grabbing Data From Files Now \n")));
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("-----------------------------\n")));
 
-            for(int i = 0; i < files.Count(); i++) {
+                for(int i = 0; i < files.Count(); i++) {
 
-                try {
-                    System.IO.StreamReader file = new System.IO.StreamReader(files[i]);
-                    GetData(file, files[i], np);
-                } catch {
-
-                    OutputTextBox.Text += "Could not get Data from: " + files[i] + "\n";
+                    try {
+                        System.IO.StreamReader file = new System.IO.StreamReader(files[i]);
+                        GetData(file, files[i], np);
+                    } catch {
+                        Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("Could not get Data from: " + files[i] + "\n")));
+                    }
                 }
-            }
-            OutputTextBox.Text += "Done Reading information" + "\n";
-            OutputTextBox.Text += "\n\nWriting to .CSV file now" + "\n";
-            OutputTextBox.Text += "Warning: any errors from this step may cause a corrupted .csv file" + "\n";
-            OutputTextBox.Text += "---------------------------------------------------------------------" + "\n";
-            try { 
-            
-                _writer = new CSVWriter(_dialog.SelectedPath.ToString() + "\\" + OutFileTextBox.Text + ".csv");
-            } catch { 
-            
-                OutputTextBox.Text += "ERROR: COULD NOT OPEN OUTFILE";
-                return;
-            }
-            WriteData(np);
-            OutputTextBox.Text += "Done Writing to .CSV file" + "\n";
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("Done Reading information" + "\n")));
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("\n\nWriting to .CSV file now \n")));
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("Any errors from this step may cause a corrupted .csv file" + "\n")));
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("---------------------------------------------------------------------" + "\n")));
+                WriteData(np);
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("Done Writing to .CSV file\n")));
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("\n\nChecking Standard Deviations\n")));
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("----------------------------" + "\n")));
+                checkSTDDeveation(n);
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => Done()));
+        }
 
-            OutputTextBox.Text += "\n\nChecking Standard Deviations" + "\n";
-            OutputTextBox.Text += "----------------------------" + "\n";
-            checkSTDDeveation(n);
-
-            OutputTextBox.Text += "\n\nDone";
-
+        public void Done() {
+            //enable buttons
+            CloseButton.IsEnabled = true;
+            GoButton.IsEnabled = true;
+            HelpButton.IsEnabled = true;
+            SelectFolderButton.IsEnabled = true;
+            PointsUpDown.IsEnabled = true;
+            STDDevUpDown.IsEnabled = true;
+            _data.Clear();
+            OutputTextBox.AppendText("Done!");
         }
 
         public void GetData(System.IO.StreamReader file, string filename, int n) {
@@ -127,7 +156,7 @@ namespace GUIFish {
 
             line = file.ReadLine();
             if(null == line) {
-                OutputTextBox.Text += "could not get the LM from: " + fd.Name + "\n";
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("could not get the LM from: " + fd.Name + "\n")));
                 return;
             }
             parts = line.Split('=');
@@ -135,14 +164,13 @@ namespace GUIFish {
             try {
                 fd.LM = Convert.ToInt32(parts[1]);
             } catch {
-
-                OutputTextBox.Text += "could not get the LM from: " + fd.Name + "\n";
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("could not get the LM from: " + fd.Name + "\n")));
                 return;
             }
 
             if(fd.LM != n) {
 
-                OutputTextBox.Text += fd.Name + " does not have the correct LM" + "\n";
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText(fd.Name + " does not have the correct LM" + "\n")));
                 return;
             }
 
@@ -150,14 +178,14 @@ namespace GUIFish {
 
                 line = file.ReadLine();
                 if(null == line) {
-                    OutputTextBox.Text += "could not get the point " + i.ToString() + " from: " + fd.Name + "\n";
+                    Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("could not get the point " + i.ToString() + " from: " + fd.Name + "\n")));
                     return;
                 }
                 parts = line.Split(' ');
                 try {
                     fd.AddPoint(Convert.ToDouble(parts[0]), Convert.ToDouble(parts[1]));
                 } catch {
-                    OutputTextBox.Text += "could not get the point " + i.ToString() + " from: " + fd.Name + "\n";
+                    Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("could not get the point " + i.ToString() + " from: " + fd.Name + "\n")));
                     return;
                 }
             }
@@ -168,28 +196,27 @@ namespace GUIFish {
 
             line = file.ReadLine();
             if(null == line) {
-                OutputTextBox.Text += "could not get the ID from:  " + fd.Name + "\n";
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("could not get the ID from:  " + fd.Name + "\n")));
                 return;
             }
             parts = line.Split('=');
             try {
                 fd.Id = Convert.ToInt32(parts[1]);
             } catch {
-
-                OutputTextBox.Text += "could not get the ID from: " + fd.Name + "\n";
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("could not get the ID from:  " + fd.Name + "\n"))); ;
                 return;
             }
 
             line = file.ReadLine();
             if(null == line) {
-                OutputTextBox.Text += "could not get the scale from: " + fd.Name + "\n";
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("could not get the ID from:  " + fd.Name + "\n")));
                 return;
             }
             parts = line.Split('=');
             try {
                 fd.Scale = Convert.ToDouble(parts[1]);
             } catch {
-                OutputTextBox.Text += "could not get the scale from: " + fd.Name + "\n";
+                Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("could not get the scale from: " + fd.Name + "\n")));
                 return;
             }
 
@@ -204,8 +231,7 @@ namespace GUIFish {
                     _writer.addToCurrent(_data[i].Name);
                     _writer.addToCurrent("");
                 } catch {
-
-                    OutputTextBox.Text += "Error Writing the name: " + _data[i].Name + "\n";
+                    Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("Error Writing the name: " + _data[i].Name + "\n")));
                 }
             }
             _writer.WriteLine();
@@ -216,7 +242,7 @@ namespace GUIFish {
                     _writer.addToCurrent("X");
                     _writer.addToCurrent("Y");
                 } catch {
-                    OutputTextBox.Text += "Error with File: " + _data[i].Name + "\n";
+                    Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("Error with file: " + _data[i].Name + "\n")));
                 }
 
             }
@@ -228,7 +254,7 @@ namespace GUIFish {
                         _writer.addToCurrent(_data[i].Points[n].Y.ToString());
 
                     } catch {
-                        OutputTextBox.Text += "error, could not write number " + n.ToString() + " coordinates for: " + _data[i].Name + "\n";
+                        Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("error, could not write number " + n.ToString() + " coordinates for: " + _data[i].Name + "\n")));
                     }
 
                 }
@@ -241,8 +267,7 @@ namespace GUIFish {
                     _writer.addToCurrent("Scale: ");
                     _writer.addToCurrent(_data[i].Scale.ToString());
                 } catch {
-
-                    OutputTextBox.Text += "could not write scale for: " + _data[i].Name + "\n";
+                    Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("could not write scale for: " + _data[i].Name + "\n")));
                 }
 
             }
@@ -260,8 +285,7 @@ namespace GUIFish {
             }
 
             mean /= _data.Count;
-
-            OutputTextBox.Text += "mean scale: " + mean.ToString() + "\n";
+            Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("mean scale: " + mean.ToString("n5") + "\n")));
 
             double std_dev = 0.0;
 
@@ -274,22 +298,21 @@ namespace GUIFish {
 
             std_dev = Math.Sqrt(Math.Abs(std_dev));
 
-            OutputTextBox.Text += "Standard Deviation: " + std_dev.ToString() + "\n";
-
-            OutputTextBox.Text += "any files that are off by " + num.ToString() + " standard deviations will show up below:" + "\n";
+            Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("Standard Deviation: " + std_dev.ToString("n5") + "\n")));
+            Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText("any files that are off by " + num.ToString() + " standard deviations will show up below:" + "\n")));
             //check if number is more than num std_devs from the mean
             foreach(FishData fd in _data) {
 
                 if((num * std_dev) < Math.Abs(fd.Scale - mean)) {
 
-                    OutputTextBox.Text += fd.Name + "\n";
+                    Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() => OutputTextBox.AppendText(fd.Name + "\n")));
                 }
             }
         }
 
         private void HelpButton_Click(object sender, RoutedEventArgs e) {
             HelpWindow helpwindow = new HelpWindow();
-            
+
             helpwindow.addText("Puts Information From the .TPS files into a .CSV file");
             helpwindow.addText("");
             helpwindow.addText("First Make sure all target .TPS files are in the same directory");
