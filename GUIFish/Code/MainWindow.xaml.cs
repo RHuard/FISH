@@ -30,7 +30,7 @@ namespace GUIFish {
         private void Help_Button_Click(object sender, RoutedEventArgs e) {
             HelpWindow helpwindow = new HelpWindow();
 
-            helpwindow.addText("Fish Sticks Automation Tools v 2.0.0");
+            helpwindow.addText("Fish Sticks Automation Tools v 2.1.0");
             helpwindow.addText("    Ryan Huard");
 
             helpwindow.addText("");
